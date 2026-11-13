@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.py[cod]
+media_cache/
+*.log
+bgutil-provider.zip

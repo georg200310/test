@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: videolibre-live
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: MAX_CONCURRENT_STREAMS
+        value: "2"
+      - key: PYTHONUNBUFFERED
+        value: "1"

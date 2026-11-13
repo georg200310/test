@@ -1,0 +1,12 @@
+VIDEO LIBRE v7 ONLINE DEPLOYMENT
+
+1. Create a public GitHub repository named videolibre-live.
+2. Upload all files from this folder to the repository root.
+3. Sign in at https://render.com/.
+4. Choose New -> Blueprint.
+5. Connect the repository. Render detects render.yaml.
+6. Confirm the service creation and wait for a successful deploy.
+7. Share the generated https://<service>.onrender.com address.
+
+The application is public to anyone with the URL. The template allows two concurrent live streams per instance and is intended for small-scale testing.
+A free Render instance can sleep after inactivity. Choose a paid always-on service if continuous availability matters.

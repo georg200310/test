@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101310">
+  <meta name="description" content="VideoLibre – eine unabhängige Video-Oberfläche mit eigener Wiedergabe-Engine.">
+  <title>VideoLibre — Watch differently</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#101310;--panel:#171c18;--panel2:#1e251f;--line:#2b342d;--text:#eff4eb;--muted:#9ba99d;--acid:#c5f36a;--orange:#ff906b;--shadow:0 20px 70px #0008;--radius:20px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(ellipse at 85% -15%,#34472a 0,transparent 35%),radial-gradient(ellipse at -15% 35%,#1f3328 0,transparent 32%),var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}button,input{font:inherit}button{cursor:pointer;color:inherit}a{color:inherit;text-decoration:none}.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.sidebar{border-right:1px solid var(--line);padding:27px 18px;display:flex;flex-direction:column;gap:34px;background:#101510b8;backdrop-filter:blur(18px);position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:11px;padding:0 8px}.brand-mark{width:38px;height:38px;border-radius:13px;background:var(--acid);color:#101510;display:grid;place-items:center;font-size:21px;font-weight:800;transform:rotate(-5deg);box-shadow:0 0 28px #c5f34430}.brand-name{font:700 22px 'Space Grotesk';letter-spacing:-1px}.brand-name span{color:var(--acid)}.nav-label{font:500 10px 'DM Mono';color:#748176;letter-spacing:1.5px;padding:0 12px 8px;text-transform:uppercase}.nav{display:grid;gap:6px}.nav-btn{border:1px solid transparent;background:transparent;color:#aab5aa;text-align:left;padding:12px;border-radius:12px;display:flex;align-items:center;gap:12px;font-size:14px}.nav-btn:hover,.nav-btn.active{background:#202820;border-color:#364235;color:var(--text)}.nav-btn.active .nav-icon{color:var(--acid)}.nav-icon{width:20px;text-align:center;font-size:17px}.sidebar-bottom{margin-top:auto}.engine-card{border:1px solid #3b4937;background:linear-gradient(145deg,#242f22,#171e18);border-radius:16px;padding:15px}.engine-top{display:flex;align-items:center;justify-content:space-between;font:11px 'DM Mono';color:var(--muted)}.dot{width:7px;height:7px;display:inline-block;background:var(--acid);border-radius:100%;box-shadow:0 0 10px var(--acid);margin-right:6px}.engine-card strong{display:block;font:600 15px 'Space Grotesk';margin:12px 0 5px}.engine-card p{font-size:11px;line-height:1.5;color:var(--muted);margin:0}.main{min-width:0;padding:26px clamp(20px,4vw,58px) 70px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:36px}.crumb{font:11px 'DM Mono';color:#879389;letter-spacing:.8px}.crumb b{color:var(--acid);font-weight:400}.top-actions{display:flex;align-items:center;gap:10px}.icon-btn{width:38px;height:38px;border-radius:12px;background:#192019;border:1px solid var(--line);color:var(--muted)}.avatar{width:37px;height:37px;border-radius:13px;background:#34452c;color:var(--acid);display:grid;place-items:center;font-weight:700}.hero{position:relative;overflow:hidden;min-height:270px;border:1px solid #46553f;border-radius:25px;padding:clamp(25px,4vw,46px);background:linear-gradient(105deg,#202b1e 0%,#222c20 46%,#333e27 100%);box-shadow:var(--shadow);margin-bottom:34px}.hero:before{content:'';position:absolute;width:380px;height:380px;border-radius:50%;border:1px solid #d3f68c20;right:4%;top:-155px;box-shadow:0 0 0 36px #d3f68c08,0 0 0 74px #d3f68c06}.hero:after{content:'▶';position:absolute;right:13%;top:50%;transform:translateY(-50%) rotate(9deg);font-size:clamp(100px,15vw,190px);font-weight:800;color:#d2f58b12;text-shadow:0 0 50px #d2f58b0a}.eyebrow{font:11px 'DM Mono';letter-spacing:1.7px;color:var(--acid);text-transform:uppercase;position:relative;z-index:1}.hero h1{font:700 clamp(36px,5vw,61px)/.98 'Space Grotesk';letter-spacing:-3px;max-width:620px;margin:17px 0 14px;position:relative;z-index:1}.hero h1 span{color:var(--acid)}.hero p{color:#c0cdb9;font-size:14px;line-height:1.6;max-width:440px;margin:0;position:relative;z-index:1}.search-wrap{position:relative;z-index:2;margin-top:26px;max-width:690px}.search-box{display:flex;align-items:center;background:#101610;border:1px solid #53634c;border-radius:14px;padding:6px 7px 6px 16px;box-shadow:0 8px 30px #0003}.search-symbol{font-size:19px;color:var(--acid);margin-right:11px}.search-box input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font-size:14px;padding:12px 0}.search-box input::placeholder{color:#718071}.search-btn{border:0;background:var(--acid);color:#141a11;font-weight:800;border-radius:10px;padding:12px 18px;font-size:13px}.search-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}.quick-row{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}.chip{border:1px solid #43503e;background:#1a241a;color:#c5d1be;border-radius:100px;padding:8px 12px;font:11px 'DM Mono'}.chip:hover{border-color:var(--acid);color:var(--acid)}.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:32px 0 16px}.section-head h2{font:600 22px 'Space Grotesk';letter-spacing:-.6px;margin:0}.section-head p{font-size:12px;color:var(--muted);margin:5px 0 0}.section-kicker{font:10px 'DM Mono';color:var(--acid);letter-spacing:1.4px;text-transform:uppercase;margin-bottom:8px}.results{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.video-card{min-width:0;cursor:pointer}.thumb{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#222a22;border:1px solid #303a31}.thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s}.video-card:hover .thumb img{transform:scale(1.045)}.thumb:after{content:'';position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#0009)}.play-tag{position:absolute;z-index:1;right:10px;bottom:10px;background:#111b;color:var(--acid);border:1px solid #ffffff33;border-radius:8px;padding:5px 8px;font:10px 'DM Mono'}.video-card h3{font-size:13px;line-height:1.4;margin:10px 0 5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.video-card .meta{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.empty-state{border:1px dashed #3a463b;border-radius:17px;padding:35px 20px;text-align:center;color:var(--muted);grid-column:1/-1}.empty-state strong{display:block;color:var(--text);font:600 16px 'Space Grotesk';margin:8px}.empty-icon{font-size:29px;color:var(--acid)}.player-view{display:none;margin-bottom:26px}.player-layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px}.player-panel{background:#080b09;border:1px solid #354036;border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}.video-stage{background:#050605;aspect-ratio:16/9;display:grid;place-items:center;position:relative}.video-stage video{width:100%;height:100%;max-height:70vh;object-fit:contain;background:#000}.player-placeholder{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#a8b2a7}.player-placeholder .spinner{width:36px;height:36px;border:3px solid #465344;border-top-color:var(--acid);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 13px}@keyframes spin{to{transform:rotate(360deg)}}.video-info{padding:18px 20px}.video-info h2{font:600 19px 'Space Grotesk';margin:0 0 8px}.video-info p{font-size:12px;color:var(--muted);margin:0;line-height:1.6}.player-side{border:1px solid var(--line);border-radius:17px;background:#171d18;padding:17px}.player-side h3{font:600 15px 'Space Grotesk';margin:0 0 11px}.player-side p{font-size:12px;color:var(--muted);line-height:1.6}.source-pill{display:inline-flex;align-items:center;gap:7px;background:#253021;border:1px solid #46583a;color:var(--acid);border-radius:100px;padding:7px 10px;font:10px 'DM Mono';margin:8px 0 16px}.outline-btn{border:1px solid #465346;background:#1e271f;border-radius:10px;padding:10px 12px;font-size:12px;color:#d6e0d1;width:100%;margin-top:8px}.outline-btn:hover{border-color:var(--acid);color:var(--acid)}.notice{font-size:11px!important;color:#7f8c80!important;margin-top:12px!important}.status{margin-top:14px;color:#9ba99d;font:11px 'DM Mono';min-height:18px}.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,20px);background:#d0f58a;color:#11170e;padding:11px 17px;border-radius:11px;font-size:12px;font-weight:700;opacity:0;transition:.25s;z-index:20;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}.footer{border-top:1px solid var(--line);margin-top:48px;padding-top:17px;display:flex;justify-content:space-between;gap:15px;color:#738074;font:10px 'DM Mono'}.mobile-brand{display:none}
+    .quality-control{margin:14px 0 10px}.quality-control label{display:block;color:#aab5aa;font:10px 'DM Mono';letter-spacing:1px;margin:0 0 8px}.quality-control select{width:100%;border:1px solid #465346;background:#101610;color:var(--text);border-radius:10px;padding:11px 12px;font:12px 'DM Sans';outline:none}.quality-control select:focus{border-color:var(--acid)}.download-progress{margin-top:12px}.progress-track{height:8px;background:#303a30;border-radius:99px;overflow:hidden;border:1px solid #465346}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,#91c94c,var(--acid));border-radius:99px;transition:width .25s}.progress-fill.live{width:42%;animation:livePulse 1.15s ease-in-out infinite alternate}@keyframes livePulse{from{transform:translateX(-12%);opacity:.68}to{transform:translateX(145%);opacity:1}}.progress-label{display:flex;justify-content:space-between;gap:8px;color:#aab5aa;font:10px 'DM Mono';margin-top:7px}.player-placeholder .progress-track{max-width:320px;margin:14px auto 8px}.player-placeholder .progress-label{max-width:320px;margin:0 auto}.player-placeholder #downloadProgressText{font-size:11px;color:#a8b2a7;line-height:1.5}
+    @media(max-width:1150px){.results{grid-template-columns:repeat(3,minmax(0,1fr))}.player-layout{grid-template-columns:minmax(0,1fr) 230px}}
+    @media(max-width:850px){.app{grid-template-columns:1fr}.sidebar{height:auto;position:relative;padding:14px 18px;border-right:0;border-bottom:1px solid var(--line);display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}.sidebar .nav-label,.sidebar .nav,.sidebar-bottom{display:none}.main{padding:20px 18px 55px}.topbar{margin-bottom:22px}.hero{min-height:250px}.results{grid-template-columns:repeat(2,minmax(0,1fr))}.player-layout{grid-template-columns:1fr}.player-side{order:-1}}
+    @media(max-width:520px){.hero{padding:24px 19px;border-radius:19px}.hero h1{font-size:41px;letter-spacing:-2px}.hero:after{right:-3%;font-size:110px}.hero p{font-size:12px}.search-box{padding-left:11px}.search-btn{padding:11px 12px}.search-box input{font-size:12px}.results{gap:14px 10px}.video-card h3{font-size:12px}.thumb{border-radius:11px}.section-head h2{font-size:19px}.footer{flex-direction:column}.top-actions .icon-btn{display:none}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">▶</div><div class="brand-name">video<span>libre</span></div></div>
+    <div>
+      <div class="nav-label">Workspace</div>
+      <nav class="nav">
+        <button class="nav-btn active" data-view="discover"><span class="nav-icon">⌂</span> Entdecken</button>
+        <button class="nav-btn" data-view="history"><span class="nav-icon">◷</span> Zuletzt angesehen</button>
+      </nav>
+    </div>
+    <div class="sidebar-bottom">
+      <div class="engine-card">
+        <div class="engine-top"><span>LIVE STREAM ENGINE</span><span><i class="dot"></i><span id="engineState">STARTET</span></span></div>
+        <strong>VideoLibre Stream Engine</strong>
+        <p>Eine ausgewählte Auflösung wird live zum Player übertragen. Keine vollständige Download-Wartezeit.</p>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar"><div class="crumb">VIDEO / <b id="crumbText">ENTDECKEN</b></div><div class="top-actions"><button class="icon-btn" id="refreshBtn" title="Ansicht aktualisieren">↻</button><div class="avatar">V</div></div></div>
+    <section class="hero" id="hero">
+      <div class="eyebrow">✳ YOUR VIDEO SPACE</div>
+      <h1>Watch<br><span>differently.</span></h1>
+      <p>Deine Videos. Dein Player. Der Stream startet, während die Daten noch übertragen werden – ohne den normalen YouTube-iframe-Player.</p>
+      <div class="search-wrap">
+        <form class="search-box" id="searchForm">
+          <span class="search-symbol">⌕</span>
+          <input id="searchInput" autocomplete="off" placeholder="Video suchen oder YouTube-Link einfügen …" aria-label="Video suchen oder YouTube-Link einfügen">
+          <button class="search-btn" type="submit">Suchen ↗</button>
+        </form>
+        <div class="quick-row"><button class="chip" data-query="lofi hip hop radio">◉ Lofi</button><button class="chip" data-query="Natur Dokumentation 4K">↟ Natur</button><button class="chip" data-query="programmieren lernen">⌘ Coding</button><button class="chip" data-query="Wissenschaft erklärt">✳ Wissen</button></div>
+      </div>
+    </section>
+
+    <section class="player-view" id="playerView">
+      <div class="section-kicker">NOW PLAYING / LIVE STREAM</div>
+      <div class="player-layout">
+        <div class="player-panel">
+          <div class="video-stage">
+            <video id="videoPlayer" controls playsinline preload="metadata"></video>
+            <div class="player-placeholder" id="playerPlaceholder"><div><div class="spinner"></div><strong id="downloadTitle">Video wird vorbereitet …</strong><p id="downloadProgressText">Prüfe die verfügbare Qualität.</p><div class="progress-track"><div class="progress-fill" id="downloadProgressBar"></div></div><div class="progress-label"><span id="downloadProgressLeft">Download</span><span id="downloadProgressRight">0%</span></div></div></div>
+          </div>
+          <div class="video-info"><h2 id="playingTitle">Video wird geladen</h2><p id="playingChannel"></p></div>
+        </div>
+        <aside class="player-side">
+          <div class="section-kicker">STREAM DETAILS</div>
+          <h3>Libre Player</h3>
+          <div class="source-pill"><i class="dot"></i> PROGRESSIVE STREAM ENGINE</div>
+          <p>Es wird genau eine Videoauflösung ausgewählt. Bild und Ton werden während der Übertragung zusammengeführt; der Player startet, sobald die ersten Segmente ankommen.</p>
+          <div class="quality-control"><label for="qualitySelect">VIDEOAUFLÖSUNG</label><select id="qualitySelect"><option value="720">720p · Schnell</option><option value="1080" selected>1080p · Full HD</option><option value="1440">1440p · WQHD</option><option value="2160">2160p · 4K</option><option value="best">Beste verfügbare Qualität</option></select></div>
+          <button class="outline-btn" id="backBtn">← Zurück zur Suche</button>
+          <button class="outline-btn" id="openYoutubeBtn">Original auf YouTube öffnen ↗</button>
+          <p class="notice">Hinweis: Der Stream beginnt sofort, aber nicht gepufferte Stellen können während der laufenden Übertragung noch nicht angesprungen werden.</p>
+          <div class="status" id="playerStatus"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="resultsSection">
+      <div class="section-head"><div><div class="section-kicker" id="sectionKicker">YOUR NEXT RABBIT HOLE</div><h2 id="resultsTitle">Finde etwas Neues.</h2><p id="resultsSub">Gib einen Suchbegriff ein oder starte mit einem Thema.</p></div></div>
+      <div class="results" id="resultsGrid">
+        <div class="empty-state"><div class="empty-icon">✳</div><strong>Dein nächstes Video wartet.</strong>Suche nach einem Thema oder füge einen YouTube-Link ein.</div>
+      </div>
+      <div class="status" id="searchStatus" role="status" aria-live="polite"></div>
+    </section>
+    <footer class="footer"><span>VIDEOLIBRE / LOKAL AUF DEINEM PC</span><span>LIVE STREAM · SINGLE RESOLUTION · v7.0</span></footer>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const searchInput = $('searchInput');
+  const grid = $('resultsGrid');
+  const historyKey = 'videolibre-history-v3';
+  let lastResults = [];
+  let activeVideoId = null;
+  let activeYoutubeUrl = null;
+
+  function toast(message) {
+    const el = $('toast'); el.textContent = message; el.classList.add('show');
+    clearTimeout(toast.timer); toast.timer = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+  function formatDuration(seconds) {
+    if (!Number.isFinite(Number(seconds))) return '';
+    const n = Math.max(0, Math.floor(Number(seconds)));
+    const h = Math.floor(n / 3600), m = Math.floor((n % 3600) / 60), s = n % 60;
+    return h ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`;
+  }
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function videoIdFromInput(raw) {
+    const value = raw.trim();
+    if (/^[A-Za-z0-9_-]{11}$/.test(value)) return value;
+    try {
+      const url = new URL(value);
+      if (url.hostname.endsWith('youtu.be')) return url.pathname.split('/').filter(Boolean)[0] || null;
+      if (url.hostname.includes('youtube.com')) {
+        if (url.searchParams.get('v')) return url.searchParams.get('v');
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (['shorts','embed','live'].includes(parts[0])) return parts[1] || null;
+      }
+    } catch (_) {}
+    return null;
+  }
+  function remember(video) {
+    let items = [];
+    try { items = JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch (_) {}
+    items = [video, ...items.filter(item => item.id !== video.id)].slice(0, 24);
+    localStorage.setItem(historyKey, JSON.stringify(items));
+  }
+  function setActiveNav(view) {
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+    $('crumbText').textContent = view === 'history' ? 'VERLAUF' : 'ENTDECKEN';
+  }
+  function showEmpty(icon, title, text) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon}</div><strong>${escapeHtml(title)}</strong>${escapeHtml(text)}</div>`;
+  }
+  function renderResults(items) {
+    lastResults = items;
+    if (!items.length) { showEmpty('⌕','Keine Treffer gefunden.','Versuche einen anderen Suchbegriff.'); return; }
+    grid.innerHTML = items.map(item => `
+      <article class="video-card" data-id="${escapeHtml(item.id)}" tabindex="0" role="button" aria-label="${escapeHtml(item.title)} abspielen">
+        <div class="thumb"><img loading="lazy" src="${escapeHtml(item.thumbnail || '')}" alt="" onerror="this.src='https://placehold.co/640x360/202920/d8efb0?text=VideoLibre'"><span class="play-tag">${formatDuration(item.duration) || '▶ PLAY'}</span></div>
+        <h3>${escapeHtml(item.title)}</h3><div class="meta">${escapeHtml(item.channel || 'YouTube-Kanal')}</div>
+      </article>`).join('');
+    grid.querySelectorAll('.video-card').forEach(card => {
+      const open = () => playVideo(card.dataset.id);
+      card.addEventListener('click', open);
+      card.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); } });
+    });
+  }
+  async function api(path) {
+    const response = await fetch(path, {headers: {'Accept':'application/json'}});
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(data.detail || `Serverfehler (${response.status})`);
+    return data;
+  }
+  async function search(query) {
+    const cleaned = query.trim();
+    if (cleaned.length < 2) { toast('Bitte gib mindestens zwei Zeichen ein.'); return; }
+    const id = videoIdFromInput(cleaned);
+    if (id) { playVideo(id); return; }
+    $('playerView').style.display = 'none';
+    $('hero').style.display = 'block';
+    $('resultsTitle').textContent = `Ergebnisse für „${cleaned}“`;
+    $('resultsSub').textContent = 'Suche über die eigene Libre Engine.';
+    $('sectionKicker').textContent = 'SEARCH RESULTS';
+    $('searchStatus').textContent = 'Suche läuft …';
+    showEmpty('◌','Wir suchen gerade …','Die Engine fragt YouTube nach passenden Videos.');
+    try {
+      const data = await api(`/api/search?q=${encodeURIComponent(cleaned)}`);
+      renderResults(data.results || []);
+      $('searchStatus').textContent = `${(data.results || []).length} Treffer gefunden`;
+      $('resultsSection').scrollIntoView({behavior:'smooth', block:'start'});
+    } catch (error) {
+      $('searchStatus').textContent = '';
+      showEmpty('!','Suche gerade nicht möglich.',error.message);
+    }
+  }
+  let playbackSequence = 0;
+  function getVideoMetadata(id) {
+    const fromResults = lastResults.find(item => item.id === id);
+    if (fromResults) return fromResults;
+    try {
+      const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+      return history.find(item => item.id === id) || null;
+    } catch (_) { return null; }
+  }
+  function playVideo(id) {
+    if (!/^[A-Za-z0-9_-]{11}$/.test(id)) { toast('Dieser YouTube-Link sieht ungültig aus.'); return; }
+    const requestToken = ++playbackSequence;
+    const quality = $('qualitySelect').value;
+    const metadata = getVideoMetadata(id) || {};
+    activeVideoId = id;
+    activeYoutubeUrl = `https://www.youtube.com/watch?v=${id}`;
+    $('hero').style.display = 'none'; $('playerView').style.display = 'block';
+    $('resultsSection').style.display = 'none'; $('playerPlaceholder').style.display = 'grid';
+    $('downloadTitle').textContent = 'Live-Stream wird aufgebaut …';
+    $('downloadProgressText').textContent = `Es wird nur ein Stream bis ${quality === 'best' ? 'zur besten verfügbaren Auflösung' : quality + 'p'} angefordert. Die Wiedergabe startet während der Übertragung.`;
+    $('downloadProgressBar').classList.add('live');
+    $('downloadProgressBar').style.width = '42%';
+    $('downloadProgressRight').textContent = 'LIVE';
+    $('downloadProgressLeft').textContent = 'Ein Videostream';
+    $('playerStatus').textContent = 'YouTube-Format wird ermittelt; FFmpeg verbindet Bild und Ton live …';
+    $('playingTitle').textContent = metadata.title || `YouTube-Video ${id}`;
+    $('playingChannel').textContent = metadata.channel || '';
+
+    const player = $('videoPlayer');
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+    player.onerror = () => {
+      if (requestToken !== playbackSequence) return;
+      const code = player.error ? player.error.code : 0;
+      const mediaMessages = {
+        1: 'Die Wiedergabe wurde abgebrochen.',
+        2: 'Netzwerkfehler beim Live-Stream.',
+        3: 'Der Browser konnte den Stream nicht decodieren.',
+        4: 'Der Browser unterstützt das gelieferte Streamformat nicht.'
+      };
+      $('playerPlaceholder').style.display = 'none';
+      $('downloadProgressBar').classList.remove('live');
+      $('playerStatus').textContent = `${mediaMessages[code] || 'Der Live-Stream ist fehlgeschlagen.'} Öffne das Video erneut oder probiere eine niedrigere Auflösung.`;
+    };
+    player.addEventListener('canplay', () => {
+      if (requestToken !== playbackSequence) return;
+      $('playerPlaceholder').style.display = 'none';
+      $('downloadTitle').textContent = 'Wiedergabe aktiv';
+      $('downloadProgressText').textContent = 'Das Video wird abgespielt, während der restliche Stream weiter übertragen wird.';
+      $('playerStatus').textContent = 'Live-Übertragung läuft. Es wird nur die gewählte Auflösung geladen.';
+    }, {once:true});
+    player.addEventListener('playing', () => {
+      if (requestToken !== playbackSequence) return;
+      $('playerPlaceholder').style.display = 'none';
+      $('downloadProgressBar').classList.add('live');
+      $('downloadProgressRight').textContent = 'LIVE';
+      $('playerStatus').textContent = `Wiedergabe läuft während der Übertragung · ${quality === 'best' ? 'Beste verfügbare Qualität' : quality + 'p angefordert'}.`;
+    }, {once:true});
+    player.addEventListener('waiting', () => {
+      if (requestToken === playbackSequence && !player.paused) $('playerStatus').textContent = 'Pufferung – der Stream wird weiter geladen …';
+    });
+    player.addEventListener('ended', () => {
+      if (requestToken === playbackSequence) {
+        $('downloadProgressBar').classList.remove('live');
+        $('downloadProgressBar').style.width = '100%';
+        $('downloadProgressRight').textContent = 'FERTIG';
+        $('playerStatus').textContent = 'Stream beendet.';
+      }
+    }, {once:true});
+    player.addEventListener('progress', () => {
+      if (requestToken !== playbackSequence || !player.buffered.length) return;
+      try {
+        const end = player.buffered.end(player.buffered.length - 1);
+        $('downloadProgressLeft').textContent = `Puffer ${Math.max(0, Math.round(end - player.currentTime))} s`;
+      } catch (_) {}
+    });
+
+    const url = `/api/live/${encodeURIComponent(id)}?quality=${encodeURIComponent(quality)}&v=${requestToken}`;
+    player.src = url;
+    player.load();
+    remember({id, title:metadata.title || `YouTube-Video ${id}`, channel:metadata.channel || '', thumbnail:metadata.thumbnail || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration:metadata.duration});
+    player.play().catch(() => {
+      if (requestToken === playbackSequence) {
+        $('playerPlaceholder').style.display = 'none';
+        $('playerStatus').textContent = 'Stream angefordert – drücke Play, sobald die ersten Daten geladen sind.';
+      }
+    });
+  }
+  function showHistory() {
+    $('hero').style.display = 'none'; $('playerView').style.display = 'none'; $('resultsSection').style.display = 'block';
+    $('resultsTitle').textContent = 'Dein Verlauf'; $('resultsSub').textContent = 'Zuletzt in diesem Browser abgespielte Videos.';
+    $('sectionKicker').textContent = 'LOCAL HISTORY'; setActiveNav('history');
+    let items = [];
+    try { items = JSON.parse(localStorage.getItem(historyKey) || '[]'); } catch (_) {}
+    renderResults(items);
+    if (!items.length) showEmpty('◷','Noch nichts angesehen.','Videos, die du öffnest, erscheinen hier auf diesem Gerät.');
+  }
+  function showDiscover() {
+    $('hero').style.display = 'block'; $('playerView').style.display = 'none'; $('resultsSection').style.display = 'block';
+    $('resultsTitle').textContent = 'Finde etwas Neues.'; $('resultsSub').textContent = 'Gib einen Suchbegriff ein oder starte mit einem Thema.';
+    $('sectionKicker').textContent = 'YOUR NEXT RABBIT HOLE'; setActiveNav('discover');
+    showEmpty('✳','Dein nächstes Video wartet.','Suche nach einem Thema oder füge einen YouTube-Link ein.');
+    $('searchStatus').textContent = '';
+  }
+  $('searchForm').addEventListener('submit', event => { event.preventDefault(); search(searchInput.value); });
+  document.querySelectorAll('[data-query]').forEach(btn => btn.addEventListener('click', () => { searchInput.value = btn.dataset.query; search(btn.dataset.query); }));
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.addEventListener('click', () => btn.dataset.view === 'history' ? showHistory() : showDiscover()));
+  $('backBtn').addEventListener('click', () => { playbackSequence++; $('playerView').style.display = 'none'; $('hero').style.display = 'block'; $('resultsSection').style.display = 'block'; const player = $('videoPlayer'); player.pause(); player.removeAttribute('src'); player.load(); $('downloadProgressBar').classList.remove('live'); });
+  $('openYoutubeBtn').addEventListener('click', () => { if (activeYoutubeUrl) window.open(activeYoutubeUrl, '_blank', 'noopener,noreferrer'); });
+  $('refreshBtn').addEventListener('click', () => { if (searchInput.value.trim()) search(searchInput.value); else showDiscover(); });
+  document.addEventListener('keydown', event => {
+    if (event.key === '/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); searchInput.focus(); }
+    if (event.key === 'Escape' && $('playerView').style.display === 'block') { $('backBtn').click(); }
+  });
+  api('/api/health').then(data => { $('engineState').textContent = data.po_token_provider ? (data.public_service ? 'ONLINE' : 'BEREIT') : 'TOKEN-DIENST FEHLT'; }).catch(() => { $('engineState').textContent = 'OFFLINE'; $('playerStatus').textContent = 'VideoLibre-Engine ist derzeit nicht erreichbar.'; });
+})();
+</script>
+</body>
+</html>

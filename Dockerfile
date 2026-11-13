@@ -21,7 +21,7 @@ RUN python3 -m venv /opt/venv
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade --pre -r requirements.txt
 
 COPY . /app
 RUN chmod +x /app/start.sh \

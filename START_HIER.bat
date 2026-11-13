@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title VideoLibre v7 - Lokal starten
+title VideoLibre v8 - Lokal starten
 color 0A
 
 if not exist ".venv\Scripts\python.exe" (

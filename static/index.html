@@ -84,7 +84,7 @@
       </div>
       <div class="status" id="searchStatus" role="status" aria-live="polite"></div>
     </section>
-    <footer class="footer"><span>VIDEOLIBRE / LOKAL AUF DEINEM PC</span><span>LIVE STREAM · SINGLE RESOLUTION · v7.0</span></footer>
+    <footer class="footer"><span>VIDEOLIBRE / LOKAL AUF DEINEM PC</span><span>LIVE STREAM · SINGLE RESOLUTION · v8.0</span></footer>
   </main>
 </div>
 <div class="toast" id="toast"></div>
@@ -260,15 +260,35 @@
     });
 
     const url = `/api/live/${encodeURIComponent(id)}?quality=${encodeURIComponent(quality)}&v=${requestToken}`;
-    player.src = url;
-    player.load();
     remember({id, title:metadata.title || `YouTube-Video ${id}`, channel:metadata.channel || '', thumbnail:metadata.thumbnail || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration:metadata.duration});
-    player.play().catch(() => {
-      if (requestToken === playbackSequence) {
-        $('playerPlaceholder').style.display = 'none';
-        $('playerStatus').textContent = 'Stream angefordert – drücke Play, sobald die ersten Daten geladen sind.';
+
+    // Resolve YouTube first. This lets us display the actual backend problem
+    // (e.g. YouTube player response/IP block) instead of the browser's generic MIME error.
+    (async () => {
+      try {
+        const resolved = await api(`/api/resolve/${encodeURIComponent(id)}?quality=${encodeURIComponent(quality)}`);
+        if (requestToken !== playbackSequence) return;
+        $('playerStatus').textContent = `Quelle bereit: ${resolved.height || '?'}p · ${resolved.video_codec || 'Video'} · Player ${resolved.player_client || 'auto'}`;
+        $('downloadTitle').textContent = 'Live-Stream wird gestartet …';
+        $('downloadProgressText').textContent = 'YouTube-Quelle gefunden. Der Player verbindet sich jetzt.';
+        player.src = url;
+        player.load();
+        player.play().catch(() => {
+          if (requestToken === playbackSequence) {
+            $('playerStatus').textContent = 'Quelle bereit – drücke Play, sobald die ersten Videodaten geladen sind.';
+          }
+        });
+      } catch (error) {
+        if (requestToken !== playbackSequence) return;
+        $('downloadTitle').textContent = 'YouTube-Quelle nicht erreichbar';
+        $('downloadProgressText').textContent = error.message;
+        $('downloadProgressBar').classList.remove('live');
+        $('downloadProgressBar').style.width = '0%';
+        $('downloadProgressLeft').textContent = 'FEHLER';
+        $('downloadProgressRight').textContent = '502';
+        $('playerStatus').textContent = error.message;
       }
-    });
+    })();
   }
   function showHistory() {
     $('hero').style.display = 'none'; $('playerView').style.display = 'none'; $('resultsSection').style.display = 'block';

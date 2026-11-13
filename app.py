@@ -29,19 +29,16 @@ app.mount("/assets", StaticFiles(directory=str(STATIC_DIR)), name="assets")
 VIDEO_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 CACHE_TTL_SECONDS = 180
 SEARCH_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+# Short-lived cache bridges the UI preflight request and the following live-stream request.
+# Signed source URLs are retained only briefly and never written to disk.
+TRACKS_CACHE: dict[tuple[str, str], tuple[float, dict[str, Any]]] = {}
+TRACKS_CACHE_TTL_SECONDS = 20
 QUALITY_HEIGHTS = {"720": 720, "1080": 1080, "1440": 1440, "2160": 2160, "best": None}
 REQUESTS: dict[str, deque[float]] = defaultdict(deque)
 RATE_LIMIT = 40
 RATE_WINDOW = 60
 EXTRACTION_SLOTS = asyncio.Semaphore(2)
 LIVE_STREAM_SEMAPHORE = asyncio.Semaphore(max(1, int(os.getenv("MAX_CONCURRENT_STREAMS", "2"))))
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/130.0.0.0 Safari/537.36"
-)
-
 
 def pot_provider_available() -> bool:
     try:
@@ -65,23 +62,35 @@ def check_rate_limit(request: Request) -> None:
     bucket.append(now)
 
 
+PLAYER_CLIENT_FALLBACKS: tuple[tuple[str, ...], ...] = (
+    ("mweb",),
+    ("web_embedded",),
+    ("android_vr",),
+)
+
+
 def ydl_options(**extra: Any) -> dict[str, Any]:
     options: dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "socket_timeout": 20,
+        "socket_timeout": 25,
         "retries": 2,
+        "extractor_retries": 2,
         "fragment_retries": 2,
+        # Node 22 is installed in Docker and by the Windows setup. yt-dlp does
+        # not enable Node automatically: YouTube's EJS challenge solver needs
+        # the runtime to be explicitly enabled in the Python API.
+        "js_runtimes": {"node": {}},
         "extractor_args": {
             "youtube": {"player_client": ["mweb"]},
-            # Explicitly point the BgUtils plugin at the service started by run_local.py.
+            # The BgUtils HTTP provider defaults to localhost:4416, but pass
+            # the address explicitly so local and Render deployments agree.
             "youtubepot-bgutilhttp": {"base_url": ["http://127.0.0.1:4416"]},
         },
-        "http_headers": {
-            "User-Agent": USER_AGENT,
-            "Referer": "https://www.youtube.com/",
-        },
+        # Do not override the per-client User-Agent: mweb/web_embedded need
+        # the exact headers yt-dlp associates with their Innertube clients.
+        "verbose": os.getenv("YTDLP_VERBOSE", "0") == "1",
     }
     options.update(extra)
     return options
@@ -139,39 +148,25 @@ def _live_format_selector(quality: str) -> tuple[str, list[str]]:
     return selector, sort
 
 
-def extract_live_tracks(video_id: str, quality: str) -> dict[str, Any]:
-    """Resolve exactly one selected video resolution and one audio track; do not download to disk."""
-    selector, sort = _live_format_selector(quality)
-    opts = ydl_options(
-        skip_download=True,
-        format=selector,
-        format_sort=sort,
-        noplaylist=True,
-        check_formats=False,
-    )
-    url = f"https://www.youtube.com/watch?v={video_id}"
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-
-    if not isinstance(info, dict):
-        raise RuntimeError("YouTube hat keine Videoinformationen geliefert.")
-
+def _tracks_from_info(info: dict[str, Any]) -> dict[str, Any] | None:
     selected = info.get("requested_formats")
     if not isinstance(selected, list) or not selected:
         selected = [info]
 
-    video_track = next((fmt for fmt in selected if fmt.get("url") and fmt.get("vcodec") not in (None, "none")), None)
-    audio_track = next((fmt for fmt in selected if fmt.get("url") and fmt.get("acodec") not in (None, "none")), None)
-    if video_track is None:
-        raise RuntimeError("YouTube hat für die gewählte Auflösung keine Videospur bereitgestellt.")
-    if audio_track is None:
-        raise RuntimeError("Für dieses Video wurde keine Audiospur gefunden.")
+    video_track = next(
+        (fmt for fmt in selected if fmt.get("url") and fmt.get("vcodec") not in (None, "none")),
+        None,
+    )
+    audio_track = next(
+        (fmt for fmt in selected if fmt.get("url") and fmt.get("acodec") not in (None, "none")),
+        None,
+    )
+    if video_track is None or audio_track is None:
+        return None
 
     video_codec = str(video_track.get("vcodec") or "unknown").lower()
     audio_codec = str(audio_track.get("acodec") or "unknown").lower()
-    # If a progressive format contains both tracks, it is passed to FFmpeg only once.
     same_input = video_track is audio_track or video_track.get("url") == audio_track.get("url")
-
     return {
         "title": info.get("title") or "Unbekanntes Video",
         "channel": info.get("channel") or info.get("uploader") or "YouTube-Kanal",
@@ -183,8 +178,64 @@ def extract_live_tracks(video_id: str, quality: str) -> dict[str, Any]:
         "video_codec": video_codec,
         "audio_codec": audio_codec,
         "format_id": "+".join(str(x.get("format_id") or "") for x in selected if x.get("format_id")),
-        "webpage_url": info.get("webpage_url") or url,
+        "webpage_url": info.get("webpage_url") or "",
     }
+
+
+def extract_live_tracks(video_id: str, quality: str) -> dict[str, Any]:
+    """Resolve one chosen resolution, retrying alternate YouTube player clients."""
+    selector, sort = _live_format_selector(quality)
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    failures: list[str] = []
+
+    for clients in PLAYER_CLIENT_FALLBACKS:
+        client_label = ",".join(clients)
+        extractor_args = {
+            "youtube": {"player_client": list(clients)},
+            "youtubepot-bgutilhttp": {"base_url": ["http://127.0.0.1:4416"]},
+        }
+        opts = ydl_options(
+            skip_download=True,
+            format=selector,
+            format_sort=sort,
+            noplaylist=True,
+            check_formats=False,
+            extractor_args=extractor_args,
+        )
+        try:
+            log.info(
+                "Resolving YouTube video %s at max %sp using player client(s): %s; yt-dlp=%s",
+                video_id, quality, client_label, yt_dlp.version.__version__,
+            )
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+            if isinstance(info, dict):
+                tracks = _tracks_from_info(info)
+                if tracks:
+                    tracks["webpage_url"] = info.get("webpage_url") or url
+                    tracks["player_client"] = client_label
+                    return tracks
+                failures.append(f"{client_label}: keine getrennte Video- und Audiospur gefunden")
+            else:
+                failures.append(f"{client_label}: YouTube lieferte keine Videoinformationen")
+        except yt_dlp.utils.DownloadError as exc:
+            detail = str(exc).strip().splitlines()[0][:220] or "Unbekannter yt-dlp-Fehler"
+            failures.append(f"{client_label}: {detail}")
+            log.warning("YouTube extraction failed for %s using %s: %s", video_id, client_label, detail)
+        except Exception as exc:
+            detail = str(exc).strip().splitlines()[0][:220] or type(exc).__name__
+            failures.append(f"{client_label}: {detail}")
+            log.warning("Unexpected extraction error for %s using %s: %s", video_id, client_label, detail)
+
+    reason = " | ".join(failures[-3:])
+    if any("Failed to extract any player response" in item for item in failures):
+        raise RuntimeError(
+            "YouTube hat mit keinem der unterstützten Player-Clients eine Player-Antwort geliefert. "
+            "Der Node/EJS-Challenge-Solver ist aktiviert und mehrere Clients wurden versucht. "
+            "Mögliche Ursache: YouTube blockiert vorübergehend die IP des Hosting-Anbieters. "
+            f"Details: {reason}"
+        )
+    raise RuntimeError("YouTube konnte keinen abspielbaren Stream liefern. " + reason)
 
 
 def _ffmpeg_input_headers(fmt: dict[str, Any]) -> str:
@@ -280,6 +331,54 @@ async def _drain_ffmpeg_stderr(reader: asyncio.StreamReader) -> list[str]:
     return list(tail)
 
 
+def _get_cached_tracks(video_id: str, quality: str) -> dict[str, Any] | None:
+    key = (video_id, quality)
+    cached = TRACKS_CACHE.pop(key, None)
+    if not cached:
+        return None
+    created_at, tracks = cached
+    if time.monotonic() - created_at > TRACKS_CACHE_TTL_SECONDS:
+        return None
+    return tracks
+
+
+def _cache_tracks(video_id: str, quality: str, tracks: dict[str, Any]) -> None:
+    # Keep this cache small: source URLs are signed and should not live long.
+    if len(TRACKS_CACHE) > 40:
+        oldest = sorted(TRACKS_CACHE.items(), key=lambda item: item[1][0])[:20]
+        for key, _ in oldest:
+            TRACKS_CACHE.pop(key, None)
+    TRACKS_CACHE[(video_id, quality)] = (time.monotonic(), tracks)
+
+
+@app.get("/api/resolve/{video_id}")
+async def resolve_video(request: Request, video_id: str, quality: str = "1080") -> JSONResponse:
+    """Preflight extraction so browser users see real YouTube errors, not misleading MIME errors."""
+    check_rate_limit(request)
+    if not VIDEO_ID_RE.fullmatch(video_id):
+        raise HTTPException(status_code=400, detail="Ungültige YouTube-Video-ID.")
+    if quality not in QUALITY_HEIGHTS:
+        raise HTTPException(status_code=400, detail="Qualität muss 720, 1080, 1440, 2160 oder best sein.")
+    try:
+        async with EXTRACTION_SLOTS:
+            tracks = await run_in_threadpool(partial(extract_live_tracks, video_id, quality))
+        _cache_tracks(video_id, quality, tracks)
+        return JSONResponse({
+            "status": "ready",
+            "title": tracks["title"],
+            "channel": tracks["channel"],
+            "height": tracks["height"],
+            "video_codec": tracks["video_codec"],
+            "audio_codec": tracks["audio_codec"],
+            "player_client": tracks.get("player_client", "unknown"),
+            "quality_requested": quality,
+        })
+    except Exception as exc:
+        log.exception("YouTube preflight failed for %s (%s)", video_id, quality)
+        message = str(exc).strip().splitlines()[0][:700] or "Unbekannter Fehler"
+        raise HTTPException(status_code=502, detail=message) from exc
+
+
 @app.get("/api/live/{video_id}")
 async def live_stream(request: Request, video_id: str, quality: str = "1080") -> StreamingResponse:
     """Stream one selected resolution through FFmpeg; browser playback starts before transfer completes."""
@@ -297,7 +396,9 @@ async def live_stream(request: Request, video_id: str, quality: str = "1080") ->
     process: asyncio.subprocess.Process | None = None
     stderr_task: asyncio.Task | None = None
     try:
-        tracks = await run_in_threadpool(partial(extract_live_tracks, video_id, quality))
+        tracks = _get_cached_tracks(video_id, quality)
+        if tracks is None:
+            tracks = await run_in_threadpool(partial(extract_live_tracks, video_id, quality))
         command, media_type = _live_ffmpeg_command(tracks)
         process = await asyncio.create_subprocess_exec(
             *command,
@@ -316,7 +417,7 @@ async def live_stream(request: Request, video_id: str, quality: str = "1080") ->
 
         height = tracks.get("height") or "unbekannt"
         codec_line = f"{tracks['video_codec']} / {tracks['audio_codec']}"
-        log.info("Live stream started id=%s quality=%sp selected=%sp codec=%s", video_id, quality, height, codec_line)
+        log.info("Live stream started id=%s quality=%sp selected=%sp codec=%s client=%s", video_id, quality, height, codec_line, tracks.get("player_client", "unknown"))
 
         async def stream_chunks() -> AsyncIterator[bytes]:
             try:
@@ -395,6 +496,9 @@ async def health() -> dict[str, Any]:
         "status": "ok",
         "engine": "yt-dlp + FFmpeg live stream",
         "yt_dlp_version": yt_dlp.version.__version__,
+        "youtube_js_runtime": "node-enabled",
+        "youtube_player_fallbacks": [list(x) for x in PLAYER_CLIENT_FALLBACKS],
+        "preflight_diagnostics": True,
         "po_token_provider": pot_provider_available(),
         "local_only": os.getenv("APP_ENV", "local") != "production",
         "public_service": os.getenv("APP_ENV", "local") == "production",
@@ -426,7 +530,7 @@ async def search(request: Request, q: str = "") -> JSONResponse:
 
 @app.get("/api/video/{video_id}")
 async def retired_file_download(video_id: str) -> JSONResponse:
-    raise HTTPException(status_code=410, detail="Datei-Download ist in v7 entfernt. Nutze die progressive Wiedergabe über /api/live.")
+    raise HTTPException(status_code=410, detail="Datei-Download ist in v8 entfernt. Nutze die progressive Wiedergabe über /api/live.")
 
 
 @app.get("/api/stream/{video_id}")

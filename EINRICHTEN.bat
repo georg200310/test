@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title VideoLibre v7 - Ersteinrichtung
+title VideoLibre v8 - Ersteinrichtung
 color 0B
 
 echo ================================================
@@ -57,7 +57,7 @@ echo.
 echo [2/4] Installiere VideoLibre- und YouTube-Komponenten ...
 .venv\Scripts\python.exe -m pip install --upgrade pip
 if errorlevel 1 goto :fail
-.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe -m pip install --upgrade --pre -r requirements.txt
 if errorlevel 1 goto :fail
 
 echo.

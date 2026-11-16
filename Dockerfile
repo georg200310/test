@@ -21,7 +21,9 @@ RUN python3 -m venv /opt/venv
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /opt/venv/bin/pip install --no-cache-dir --upgrade --pre -r requirements.txt
+    && /opt/venv/bin/pip install --no-cache-dir --upgrade --pre -r requirements.txt \
+    && node --version \
+    && /opt/venv/bin/python -c "import yt_dlp; print('Installed yt-dlp:', yt_dlp.version.__version__)"
 
 COPY . /app
 RUN chmod +x /app/start.sh \

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import logging
 import os
 import re
@@ -41,6 +43,44 @@ RATE_WINDOW = 60
 EXTRACTION_SLOTS = asyncio.Semaphore(2)
 LIVE_STREAM_SEMAPHORE = asyncio.Semaphore(max(1, int(os.getenv("MAX_CONCURRENT_STREAMS", "2"))))
 
+def youtube_cookie_file() -> Path | None:
+    """Return an optional Netscape cookies file without exposing it in logs.
+
+    For hosted deployments, YOUTUBE_COOKIES_B64 can contain the Base64-encoded
+    contents of a cookies.txt file. YOUTUBE_COOKIES_FILE can point at a mounted
+    secret file instead. Never commit either file or its contents to the repo.
+    """
+    mounted_path = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+    if mounted_path:
+        path = Path(mounted_path)
+        if not path.is_file():
+            raise RuntimeError("YOUTUBE_COOKIES_FILE ist gesetzt, aber die Datei ist nicht vorhanden.")
+        return path
+
+    encoded = os.getenv("YOUTUBE_COOKIES_B64", "").strip()
+    if not encoded:
+        return None
+
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise RuntimeError("YOUTUBE_COOKIES_B64 ist kein gültiger Base64-Wert.") from exc
+
+    first_line = raw.decode("utf-8-sig", errors="replace").splitlines()[:1]
+    if not first_line or first_line[0].strip() not in {"# Netscape HTTP Cookie File", "# HTTP Cookie File"}:
+        raise RuntimeError("Die YouTube-Cookie-Datei muss das Netscape/cookies.txt-Format besitzen.")
+
+    path = Path("/tmp") / f"videolibre-youtube-cookies-{os.getpid()}.txt"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as cookie_file:
+        cookie_file.write(raw)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return path
+
+
 def pot_provider_available() -> bool:
     try:
         with socket.create_connection(("127.0.0.1", 4416), timeout=0.25):
@@ -64,6 +104,9 @@ def check_rate_limit(request: Request) -> None:
 
 
 PLAYER_CLIENT_FALLBACKS: tuple[tuple[str, ...], ...] = (
+    # web_safari can expose HLS formats, which may work when an mweb request
+    # is challenged. This is a fallback, not a bypass or a guarantee.
+    ("web_safari",),
     ("mweb",),
     ("web_embedded",),
     ("android_vr",),
@@ -93,6 +136,9 @@ def ydl_options(**extra: Any) -> dict[str, Any]:
         # the exact headers yt-dlp associates with their Innertube clients.
         "verbose": os.getenv("YTDLP_VERBOSE", "0") == "1",
     }
+    cookie_path = youtube_cookie_file()
+    if cookie_path is not None:
+        options["cookiefile"] = str(cookie_path)
     options.update(extra)
     return options
 
@@ -526,6 +572,7 @@ async def health() -> dict[str, Any]:
         "yt_dlp_version": yt_dlp.version.__version__,
         "youtube_js_runtime": "node-enabled",
         "youtube_player_fallbacks": [list(x) for x in PLAYER_CLIENT_FALLBACKS],
+        "youtube_cookies_configured": bool(os.getenv("YOUTUBE_COOKIES_B64", "").strip() or os.getenv("YOUTUBE_COOKIES_FILE", "").strip()),
         "preflight_diagnostics": True,
         "po_token_provider": pot_provider_available(),
         "local_only": os.getenv("APP_ENV", "local") != "production",

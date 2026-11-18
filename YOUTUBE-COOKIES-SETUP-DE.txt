@@ -1,0 +1,22 @@
+VideoLibre – optionale YouTube-Cookies
+======================================
+
+Der Fehler „Sign in to confirm you’re not a bot“ kommt von YouTube, nicht vom
+Download-Button. Diese Version probiert zusätzlich den yt-dlp-Client
+web_safari und unterstützt optional eine cookies.txt-Datei.
+
+Render:
+1. Cookies auf einem Browser exportieren, in dem YouTube angemeldet ist.
+   Format: Netscape cookies.txt. Nur youtube.com exportieren.
+2. PowerShell (Pfad ggf. anpassen):
+   $bytes = [IO.File]::ReadAllBytes("$HOME\Downloads\cookies.txt")
+   [Convert]::ToBase64String($bytes) | Set-Clipboard
+3. Render → VideoLibre-Service → Environment → YOUTUBE_COOKIES_B64
+   hinzufügen und den kopierten Wert einfügen.
+4. Speichern und redeployen. Niemals Cookies in GitHub/Quellcode hochladen.
+
+WICHTIG: Cookies sind wie ein Login. Am besten einen separaten Google-Account
+verwenden und den Dienst privat halten. Nicht für öffentliche Mehrbenutzer-
+Dienste verwenden. Cookies können ablaufen. Eine blockierte Hosting-IP kann
+auch mit Cookies blockiert bleiben; dann Backend lokal im eigenen Netzwerk
+betreiben. Keine DRM-/Bezahlschranken werden umgangen.

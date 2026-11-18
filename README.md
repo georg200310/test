@@ -102,3 +102,37 @@ Node.js war im Docker-Image zwar bereits vorhanden, aber yt-dlp aktiviert Node i
 Im Player gibt es jetzt den Button **„Video herunterladen“**. Er ruft `/api/download/{video_id}` auf. Das Backend sendet denselben ausgewählten Video-/Audiostream mit `Content-Disposition: attachment`, damit der Browser eine echte Datei speichert. Der Download läuft direkt als Stream; auf dem Server wird keine vollständige Videodatei zwischengespeichert. Die gewählte Auflösung (720p, 1080p, 1440p, 2160p oder beste verfügbare Qualität) wird übernommen.
 
 Der Download funktioniert nur für Videos, deren Streams technisch zugänglich sind. Es werden keine privaten Inhalte, DRM, Bezahlschranken oder sonstige Zugriffsbeschränkungen umgangen. Lade nur Inhalte herunter, für die du die erforderlichen Rechte oder eine Erlaubnis hast.
+
+## YouTube: „Sign in to confirm you’re not a bot“
+
+VideoLibre tries `web_safari` as an additional player-client fallback. If YouTube
+still asks for a sign-in, yt-dlp can optionally read an exported `cookies.txt`
+file. For a hosted service, configure it as a secret environment variable; do
+not commit cookies to GitHub and do not paste them into chat.
+
+### Render environment variable (optional)
+
+1. In a browser where you are signed in to YouTube, refresh YouTube and export
+   the cookies for `youtube.com` in Netscape `cookies.txt` format.
+2. On Windows PowerShell, convert the file to one Base64 line (adjust the path):
+
+   ```powershell
+   $bytes = [IO.File]::ReadAllBytes("$HOME\Downloads\cookies.txt")
+   [Convert]::ToBase64String($bytes) | Set-Clipboard
+   ```
+
+3. In Render: open your VideoLibre service → **Environment** → add
+   `YOUTUBE_COOKIES_B64` and paste the clipboard value as its secret value.
+4. Save and redeploy. `/api/health` reports only whether cookies are configured,
+   never the cookie contents.
+
+Alternatively, mount a secret file and set `YOUTUBE_COOKIES_FILE` to its path.
+The app copies Base64-provided cookies to a private-permission temporary file
+inside the running container.
+
+**Security:** YouTube cookies are login credentials. Use a separate account with
+no sensitive data, keep this VideoLibre instance private, never place cookies in
+source control, and remove/rotate them when no longer needed. Do not configure a
+single account's cookies on a public multi-user downloader. Cookies may expire,
+and a cloud hosting IP may still be challenged even with cookies; in that case
+run the backend on your own PC/network.

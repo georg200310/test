@@ -10,6 +10,7 @@ from collections import defaultdict, deque
 from functools import partial
 from pathlib import Path
 from typing import Any, AsyncIterator
+from urllib.parse import quote
 
 import yt_dlp
 from fastapi import FastAPI, HTTPException, Request
@@ -62,18 +63,10 @@ def check_rate_limit(request: Request) -> None:
     bucket.append(now)
 
 
-# Prefer yt-dlp's current default clients first. The current defaults are
-# tv_samsung, visionos and web. Older forced clients such as mweb/web_embedded
-# are only tried as fallbacks because they can be limited or require special
-# session conditions.
 PLAYER_CLIENT_FALLBACKS: tuple[tuple[str, ...], ...] = (
-    ("tv_samsung", "visionos", "web"),
-    ("web",),
-    ("tv_samsung",),
-    ("visionos",),
     ("mweb",),
-    ("web_safari",),
     ("web_embedded",),
+    ("android_vr",),
 )
 
 
@@ -91,13 +84,13 @@ def ydl_options(**extra: Any) -> dict[str, Any]:
         # the runtime to be explicitly enabled in the Python API.
         "js_runtimes": {"node": {}},
         "extractor_args": {
-            # Do not force a global YouTube player client here. Search and
-            # fallback extraction should use the client policy selected below
-            # or yt-dlp's current defaults.
+            "youtube": {"player_client": ["mweb"]},
             # The BgUtils HTTP provider defaults to localhost:4416, but pass
             # the address explicitly so local and Render deployments agree.
             "youtubepot-bgutilhttp": {"base_url": ["http://127.0.0.1:4416"]},
         },
+        # Do not override the per-client User-Agent: mweb/web_embedded need
+        # the exact headers yt-dlp associates with their Innertube clients.
         "verbose": os.getenv("YTDLP_VERBOSE", "0") == "1",
     }
     options.update(extra)
@@ -238,10 +231,9 @@ def extract_live_tracks(video_id: str, quality: str) -> dict[str, Any]:
     reason = " | ".join(failures[-3:])
     if any("Failed to extract any player response" in item for item in failures):
         raise RuntimeError(
-            "YouTube hat bei allen getesteten Player-Clients keine Player-Antwort geliefert. "
-            "Das beweist für sich allein noch keine IP-Sperre. Prüfe den vollständigen yt-dlp-Verbose-Log "
-            "(Render-Umgebungsvariable YTDLP_VERBOSE=1), die Erreichbarkeit von youtube.com/youtubei "
-            "und ob Render tatsächlich die neueste yt-dlp-Nightly-Version verwendet. "
+            "YouTube hat mit keinem der unterstützten Player-Clients eine Player-Antwort geliefert. "
+            "Der Node/EJS-Challenge-Solver ist aktiviert und mehrere Clients wurden versucht. "
+            "Mögliche Ursache: YouTube blockiert vorübergehend die IP des Hosting-Anbieters. "
             f"Details: {reason}"
         )
     raise RuntimeError("YouTube konnte keinen abspielbaren Stream liefern. " + reason)
@@ -388,8 +380,20 @@ async def resolve_video(request: Request, video_id: str, quality: str = "1080") 
         raise HTTPException(status_code=502, detail=message) from exc
 
 
-@app.get("/api/live/{video_id}")
-async def live_stream(request: Request, video_id: str, quality: str = "1080") -> StreamingResponse:
+
+
+def _download_content_disposition(title: str, extension: str) -> str:
+    """Return a safe attachment filename with an ASCII fallback and UTF-8 name."""
+    clean_title = re.sub(r"[\x00-\x1f\x7f/\\:*?\"<>|]+", " ", str(title or "VideoLibre"))
+    clean_title = re.sub(r"\s+", " ", clean_title).strip(" .")[:160] or "VideoLibre"
+    ascii_title = clean_title.encode("ascii", "ignore").decode("ascii")
+    ascii_title = re.sub(r"[^A-Za-z0-9._ -]", "_", ascii_title).strip(" .") or "VideoLibre"
+    filename = f"{clean_title}.{extension}"
+    ascii_filename = f"{ascii_title}.{extension}"
+    return f"attachment; filename=\"{ascii_filename}\"; filename*=UTF-8''{quote(filename, safe='')}"
+
+
+async def _stream_video(request: Request, video_id: str, quality: str, *, download: bool) -> StreamingResponse:
     """Stream one selected resolution through FFmpeg; browser playback starts before transfer completes."""
     check_rate_limit(request)
     if not VIDEO_ID_RE.fullmatch(video_id):
@@ -468,8 +472,11 @@ async def live_stream(request: Request, video_id: str, quality: str = "1080") ->
             "Accept-Ranges": "none",
             "X-Video-Height": str(height),
             "X-Video-Codec": codec_line[:120],
-            "X-VideoLibre-Mode": "live-single-resolution",
+            "X-VideoLibre-Mode": "attachment-download" if download else "live-single-resolution",
         }
+        if download:
+            extension = "mp4" if media_type == "video/mp4" else "webm"
+            headers["Content-Disposition"] = _download_content_disposition(tracks.get("title") or f"Video_{video_id}", extension)
         return StreamingResponse(stream_chunks(), media_type=media_type, headers=headers)
     except HTTPException:
         if process is not None and process.returncode is None:
@@ -499,6 +506,18 @@ async def live_stream(request: Request, video_id: str, quality: str = "1080") ->
         raise HTTPException(status_code=502, detail=f"Live-Stream konnte nicht gestartet werden: {message}") from exc
 
 
+@app.get("/api/live/{video_id}")
+async def live_stream(request: Request, video_id: str, quality: str = "1080") -> StreamingResponse:
+    """Play the selected video inline in the browser."""
+    return await _stream_video(request, video_id, quality, download=False)
+
+
+@app.get("/api/download/{video_id}")
+async def download_video(request: Request, video_id: str, quality: str = "1080") -> StreamingResponse:
+    """Send the selected video as a real browser download, without storing it on the server."""
+    return await _stream_video(request, video_id, quality, download=True)
+
+
 @app.get("/api/health")
 async def health() -> dict[str, Any]:
     return {
@@ -507,12 +526,13 @@ async def health() -> dict[str, Any]:
         "yt_dlp_version": yt_dlp.version.__version__,
         "youtube_js_runtime": "node-enabled",
         "youtube_player_fallbacks": [list(x) for x in PLAYER_CLIENT_FALLBACKS],
-        "youtube_default_clients_first": True,
         "preflight_diagnostics": True,
         "po_token_provider": pot_provider_available(),
         "local_only": os.getenv("APP_ENV", "local") != "production",
         "public_service": os.getenv("APP_ENV", "local") == "production",
         "live_streaming": True,
+        "file_downloads": True,
+        "download_mode": "streamed-attachment",
         "stream_mode": "single-resolution-progressive-ffmpeg",
         "max_concurrent_streams": int(os.getenv("MAX_CONCURRENT_STREAMS", "2")),
         "quality_options": ["720", "1080", "1440", "2160", "best"],

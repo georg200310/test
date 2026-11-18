@@ -1,6 +1,6 @@
-# VideoLibre v8 — YouTube extractor compatibility + live stream
+# VideoLibre v9 — YouTube live stream + echter Datei-Download
 
-VideoLibre v8 startet die Wiedergabe, während FFmpeg die Daten noch vom Quellserver abruft. Es wird **genau eine ausgewählte Videoauflösung** angefordert und zum Browser übertragen. Die alte Funktion, die erst eine vollständige Datei heruntergeladen hat, ist deaktiviert.
+VideoLibre v9 startet die Wiedergabe, während FFmpeg die Daten noch vom Quellserver abruft. Es wird **genau eine ausgewählte Videoauflösung** angefordert und zum Browser übertragen. Zusätzlich kann dieselbe Übertragung über einen eigenen Download-Endpunkt mit Dateinamen als echte Datei gespeichert werden.
 
 ## Was sich geändert hat
 
@@ -8,7 +8,7 @@ VideoLibre v8 startet die Wiedergabe, während FFmpeg die Daten noch vom Quellse
 - Neuer Vorab-Test `/api/resolve/{video_id}?quality=1080`: zeigt echte yt-dlp-/YouTube-Fehler im Player statt einer irreführenden MIME-Meldung.
 - yt-dlp aktiviert den bereits vorhandenen Node-22-Laufzeit-Interpreter ausdrücklich für YouTubes EJS-JavaScript-Challenges.
 - yt-dlp wird im Docker- und Windows-Setup mit dem empfohlenen Nightly-Kanal installiert, damit YouTube-Extractor-Fixes schneller verfügbar sind.
-- Bei der Videoauflösung werden nacheinander `mweb`, `web_embedded` und `android_vr` als Player-Clients versucht; der erfolgreiche Client wird im Status angezeigt.
+- Bei der Videoauflösung werden aktuelle YouTube-Player-Clients zuerst versucht; ältere Clients dienen nur als Fallback.
 - yt-dlp darf die jeweiligen Client-User-Agents selbst setzen; ein alter, global fest eingestellter Desktop-User-Agent wird nicht mehr über die Client-Header gelegt.
 - yt-dlp wählt eine Videospur bis zur gewählten Auflösung und genau eine Audiospur.
 - FFmpeg führt Bild und Ton live zusammen und gibt fragmentiertes MP4 (H.264) oder WebM (VP9/AV1) aus.
@@ -16,7 +16,7 @@ VideoLibre v8 startet die Wiedergabe, während FFmpeg die Daten noch vom Quellse
 - Browser-Player beginnt, sobald die ersten decodierbaren Fragmente eintreffen.
 - Abbruch im Player beendet den dazugehörigen FFmpeg-Prozess.
 - Begrenzung auf zwei gleichzeitige Live-Streams pro Serverinstanz.
-- Kein vollständiger Datei-Download und kein Cache mehr für die normale Wiedergabe.
+- Kein dauerhafter Dateicache: Wiedergabe und Datei-Downloads werden direkt gestreamt.
 
 **Hinweis:** Bei einem Live-Stream sind Start und Pufferung schneller als beim bisherigen Komplettdownload. Vollständiges Zurückspulen bzw. Springen an beliebige Stellen ist bei diesem einfachen Ein-Pass-Stream nicht verfügbar. Das Format und die verfügbare Auflösung hängen vom Quellvideo und Browser ab.
 
@@ -28,7 +28,7 @@ Voraussetzungen:
 - Node.js 22+
 - Internetverbindung für YouTube und die Einrichtung
 
-1. ZIP in einen neuen Ordner entpacken, zum Beispiel `C:\VideoLibre-v8`.
+1. ZIP in einen neuen Ordner entpacken, zum Beispiel `C:\VideoLibre-v9`.
 2. `EINRICHTEN.bat` ausführen.
 3. `START_HIER.bat` ausführen.
 4. Der Browser öffnet `http://127.0.0.1:10000`.
@@ -56,7 +56,7 @@ Health check: `/api/health`
 - Die Vorlage verwendet den kostenlosen Web-Service-Plan, sofern Render ihn für dein Konto anbietet.
 - Kostenlose Render-Webdienste fahren nach einer Inaktivitätsphase herunter und brauchen beim nächsten Zugriff einen Kaltstart. Für eine ständig verfügbare Seite ist ein kostenpflichtiger, nicht schlafender Web-Service sinnvoll.
 - Der Live-Stream benötigt ausreichend ausgehende Bandbreite und CPU. Die Vorlage begrenzt deshalb auf zwei gleichzeitige Streams je Instanz.
-- Kostenlose Instanzen haben ein flüchtiges Dateisystem. v8 schreibt für normale Live-Wiedergabe keine vollständigen Videodateien auf die Festplatte.
+- Kostenlose Instanzen haben ein flüchtiges Dateisystem. v9 speichert keine vollständigen Videodateien dauerhaft auf dem Server; der Download wird direkt an den Browser gestreamt.
 - Die Standardvorlage ist für einen privaten Test und wenige gleichzeitige Nutzer gedacht, nicht für ein großes öffentliches Publikum. Erhöhe Stream-Limits und Compute-Leistung erst nach Lasttests.
 - Die öffentliche Website enthält keine Nutzeranmeldung. Jeder, der die URL kennt, kann die Such- und Stream-Funktionen verwenden. Teile sie deshalb zunächst nur mit Personen, denen du vertraust.
 
@@ -95,3 +95,10 @@ Node.js war im Docker-Image zwar bereits vorhanden, aber yt-dlp aktiviert Node i
 
 
 **Wichtige Hosting-Grenze:** Wenn YouTube die ausgehende IP-Adresse des Render-Dienstes blockiert, können weder EJS noch ein PO-Token-Provider diese IP-Sperre garantiert beheben. In diesem Fall ist ein Hosting-Anbieter mit anderer bzw. dedizierter ausgehender IP nötig. Der BgUtils-Anbieter selbst weist ebenfalls darauf hin, dass ein PO-Token Bot-Checks und 403-Fehler nicht garantiert umgeht.
+
+
+## Echter Datei-Download
+
+Im Player gibt es jetzt den Button **„Video herunterladen“**. Er ruft `/api/download/{video_id}` auf. Das Backend sendet denselben ausgewählten Video-/Audiostream mit `Content-Disposition: attachment`, damit der Browser eine echte Datei speichert. Der Download läuft direkt als Stream; auf dem Server wird keine vollständige Videodatei zwischengespeichert. Die gewählte Auflösung (720p, 1080p, 1440p, 2160p oder beste verfügbare Qualität) wird übernommen.
+
+Der Download funktioniert nur für Videos, deren Streams technisch zugänglich sind. Es werden keine privaten Inhalte, DRM, Bezahlschranken oder sonstige Zugriffsbeschränkungen umgangen. Lade nur Inhalte herunter, für die du die erforderlichen Rechte oder eine Erlaubnis hast.

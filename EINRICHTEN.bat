@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title VideoLibre v8 - Ersteinrichtung
+title VideoLibre v10 - Ersteinrichtung
 color 0B
 
 echo ================================================

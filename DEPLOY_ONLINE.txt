@@ -1,4 +1,4 @@
-VIDEO LIBRE v8 ONLINE DEPLOYMENT
+VIDEO LIBRE v10 ONLINE DEPLOYMENT
 
 1. Create a public GitHub repository named videolibre-live.
 2. Upload all files from this folder to the repository root.

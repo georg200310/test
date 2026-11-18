@@ -330,7 +330,7 @@
     if (event.key === '/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) { event.preventDefault(); searchInput.focus(); }
     if (event.key === 'Escape' && $('playerView').style.display === 'block') { $('backBtn').click(); }
   });
-  api('/api/health').then(data => { $('engineState').textContent = data.po_token_provider ? (data.public_service ? 'ONLINE' : 'BEREIT') : 'TOKEN-DIENST FEHLT'; }).catch(() => { $('engineState').textContent = 'OFFLINE'; $('playerStatus').textContent = 'VideoLibre-Engine ist derzeit nicht erreichbar.'; });
+  api('/api/health').then(data => { $('engineState').textContent = data.invidious_api_configured ? 'INVIDIOUS API' : (data.po_token_provider ? (data.public_service ? 'ONLINE' : 'BEREIT') : 'ERSATZQUELLE'); }).catch(() => { $('engineState').textContent = 'OFFLINE'; $('playerStatus').textContent = 'VideoLibre-Engine ist derzeit nicht erreichbar.'; });
 })();
 </script>
 </body>

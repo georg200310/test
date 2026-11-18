@@ -1,138 +1,59 @@
-# VideoLibre v9 — YouTube live stream + echter Datei-Download
+# VideoLibre v10 — Invidious API + yt-dlp fallback
 
-VideoLibre v9 startet die Wiedergabe, während FFmpeg die Daten noch vom Quellserver abruft. Es wird **genau eine ausgewählte Videoauflösung** angefordert und zum Browser übertragen. Zusätzlich kann dieselbe Übertragung über einen eigenen Download-Endpunkt mit Dateinamen als echte Datei gespeichert werden.
+Diese Version versucht zuerst die Invidious-API für YouTube-Suche und Videoformate. Erst wenn eine API-Instanz nicht erreichbar ist oder keine abspielbaren Medienformate liefert, verwendet VideoLibre wieder yt-dlp direkt.
 
-## Was sich geändert hat
+## Neu in v10
 
-- Neuer Endpunkt `/api/live/{video_id}?quality=1080` für progressive Wiedergabe.
-- Neuer Vorab-Test `/api/resolve/{video_id}?quality=1080`: zeigt echte yt-dlp-/YouTube-Fehler im Player statt einer irreführenden MIME-Meldung.
-- yt-dlp aktiviert den bereits vorhandenen Node-22-Laufzeit-Interpreter ausdrücklich für YouTubes EJS-JavaScript-Challenges.
-- yt-dlp wird im Docker- und Windows-Setup mit dem empfohlenen Nightly-Kanal installiert, damit YouTube-Extractor-Fixes schneller verfügbar sind.
-- Bei der Videoauflösung werden aktuelle YouTube-Player-Clients zuerst versucht; ältere Clients dienen nur als Fallback.
-- yt-dlp darf die jeweiligen Client-User-Agents selbst setzen; ein alter, global fest eingestellter Desktop-User-Agent wird nicht mehr über die Client-Header gelegt.
-- yt-dlp wählt eine Videospur bis zur gewählten Auflösung und genau eine Audiospur.
-- FFmpeg führt Bild und Ton live zusammen und gibt fragmentiertes MP4 (H.264) oder WebM (VP9/AV1) aus.
-- Bei unterstützten Quell-Codecs wird nicht neu kodiert. Nur seltene, inkompatible Codec-Kombinationen werden in H.264/AAC umgewandelt.
-- Browser-Player beginnt, sobald die ersten decodierbaren Fragmente eintreffen.
-- Abbruch im Player beendet den dazugehörigen FFmpeg-Prozess.
-- Begrenzung auf zwei gleichzeitige Live-Streams pro Serverinstanz.
-- Kein dauerhafter Dateicache: Wiedergabe und Datei-Downloads werden direkt gestreamt.
+- **Invidious zuerst:** Suche über `/api/v1/search` und Videoauflösung über `/api/v1/videos/:id`.
+- **Instanzliste automatisch:** VideoLibre liest die offizielle Invidious-Instanzliste unter `https://api.invidious.io/instances.json` und verwendet nur HTTPS-Instanzen, die dort `api=true` melden.
+- **Aktuelle Fallback-Instanz:** Falls die Liste nicht erreichbar ist, ist `yt.chocolatemoo53.com` als dokumentierte API-fähige Instanz hinterlegt (Stand 18.11.2026).
+- **Fallback zu yt-dlp:** Wenn Invidious nicht antwortet, werden die bisherigen yt-dlp-Player-Clients getestet.
+- **Fallback beim Streamstart:** Falls eine Invidious-Medien-URL keine Daten liefert, versucht VideoLibre yt-dlp ein zweites Mal.
+- **Echter Datei-Download:** `/api/download/{video_id}?quality=1080` sendet den Stream mit `Content-Disposition: attachment` an den Browser.
+- **Player bleibt erhalten:** `/api/live/{video_id}?quality=1080` liefert weiterhin den Live-Stream.
+- **Cookies bleiben optional:** `YOUTUBE_COOKIES_B64` und `YOUTUBE_COOKIES_FILE` werden nur verwendet, wenn yt-dlp als Ersatzquelle aufgerufen wird.
 
-**Hinweis:** Bei einem Live-Stream sind Start und Pufferung schneller als beim bisherigen Komplettdownload. Vollständiges Zurückspulen bzw. Springen an beliebige Stellen ist bei diesem einfachen Ein-Pass-Stream nicht verfügbar. Das Format und die verfügbare Auflösung hängen vom Quellvideo und Browser ab.
+## Warum Invidious?
+
+Invidious stellt API-Endpunkte für die Suche und die Video-Metadaten einschließlich `adaptiveFormats`, `formatStreams` und `hlsUrl` bereit. VideoLibre wählt daraus die passende Video- und Audiospur und verbindet sie mit FFmpeg. Nicht jede Instanz aktiviert die API, und öffentliche Instanzen können ausfallen oder ebenfalls keine Formate liefern.
+
+Die offizielle Instanzliste ist derzeit klein. Am 18.11.2026 war `yt.chocolatemoo53.com` die gelistete öffentliche Instanz mit `api=true`; andere gelistete Instanzen meldeten `api=false`. VideoLibre prüft die Liste zur Laufzeit erneut und verlässt sich nicht dauerhaft nur auf diese Momentaufnahme.
+
+## Optional: eigene Invidious-Instanz festlegen
+
+In Render → Environment kann optional `INVIDIOUS_INSTANCES` gesetzt werden. Mehrere HTTPS-Origins werden mit Komma getrennt:
+
+```text
+INVIDIOUS_INSTANCES=https://example-one.invalid,https://example-two.invalid
+```
+
+Nur Instanzen verwenden, denen du vertraust und die ihre API aktiviert haben. Leere Variable bedeutet: offizielle Instanzliste automatisch verwenden.
 
 ## Lokal unter Windows
 
-Voraussetzungen:
-- Windows 10/11, 64 Bit
-- Python 3.11+
-- Node.js 22+
-- Internetverbindung für YouTube und die Einrichtung
+Voraussetzungen: Windows 10/11, Python 3.11+, Node.js 22+ und eine Internetverbindung.
 
-1. ZIP in einen neuen Ordner entpacken, zum Beispiel `C:\VideoLibre-v9`.
+1. ZIP entpacken.
 2. `EINRICHTEN.bat` ausführen.
 3. `START_HIER.bat` ausführen.
-4. Der Browser öffnet `http://127.0.0.1:10000`.
-5. Zum Beenden im schwarzen Fenster `STRG+C` drücken.
+4. `http://127.0.0.1:10000` öffnen.
 
-Wähle die gewünschte Qualität vor dem Start. Es wird nur diese Qualitätsstufe angefordert; wenn sie nicht verfügbar ist, verwendet yt-dlp die höchste passende Stufe darunter.
+## Online mit Render
 
-## Online mit Render hosten
+1. Gesamten Inhalt dieses Projektordners in das GitHub-Repository laden (einschließlich `Dockerfile`, `render.yaml`, `start.sh`, `app.py` und `static/`).
+2. In Render einen Deploy auslösen oder den automatischen GitHub-Deploy abwarten.
+3. `/api/health` öffnen. Dort sollten `invidious_api_configured: true`, die erkannten `invidious_instances` und `primary_source` sichtbar sein, wenn eine API-Instanz gefunden wird.
 
-Das Repository enthält `Dockerfile`, `start.sh` und `render.yaml`. Der Container startet sowohl den Python-Server als auch den BgUtils-PO-Token-Dienst. Es werden keine lokalen Windows-Komponenten benötigt.
+## Qualität
 
-### Veröffentlichung
+- `720`, `1080`, `1440`, `2160`: höchste verfügbare Quelle bis zu dieser Höhe
+- `best`: höchste erkannte Videoquelle
+- Wenn eine Instanz nur kombinierte progressive Formate anbietet, kann die maximale Auflösung geringer sein als bei getrennten adaptiven Spuren.
 
-1. Erstelle ein **öffentliches GitHub-Repository** (z. B. `videolibre-live`).
-2. Lade den gesamten Inhalt dieses Projektordners in das Repository hoch. Nicht nur den ZIP-Ordner selbst hochladen.
-3. Öffne <https://render.com/> und melde dich an.
-4. Wähle **New → Blueprint** und verbinde dein GitHub-Repository.
-5. Render liest `render.yaml`, baut das Docker-Image und veröffentlicht den Webdienst.
-6. Nach erfolgreichem Deploy zeigt Render eine öffentliche `https://…onrender.com`-Adresse.
+## Grenzen
 
-Health check: `/api/health`
-
-### Render-Hinweise
-
-- Die Vorlage verwendet den kostenlosen Web-Service-Plan, sofern Render ihn für dein Konto anbietet.
-- Kostenlose Render-Webdienste fahren nach einer Inaktivitätsphase herunter und brauchen beim nächsten Zugriff einen Kaltstart. Für eine ständig verfügbare Seite ist ein kostenpflichtiger, nicht schlafender Web-Service sinnvoll.
-- Der Live-Stream benötigt ausreichend ausgehende Bandbreite und CPU. Die Vorlage begrenzt deshalb auf zwei gleichzeitige Streams je Instanz.
-- Kostenlose Instanzen haben ein flüchtiges Dateisystem. v9 speichert keine vollständigen Videodateien dauerhaft auf dem Server; der Download wird direkt an den Browser gestreamt.
-- Die Standardvorlage ist für einen privaten Test und wenige gleichzeitige Nutzer gedacht, nicht für ein großes öffentliches Publikum. Erhöhe Stream-Limits und Compute-Leistung erst nach Lasttests.
-- Die öffentliche Website enthält keine Nutzeranmeldung. Jeder, der die URL kennt, kann die Such- und Stream-Funktionen verwenden. Teile sie deshalb zunächst nur mit Personen, denen du vertraust.
-
-## Qualität und Geschwindigkeit
-
-- `720`: maximale 720p-Quelle
-- `1080`: maximale 1080p-Quelle
-- `1440`: maximale 1440p-Quelle
-- `2160`: maximale 2160p-Quelle
-- `best`: höchste verfügbare Quelle
-
-Es wird kein mehrfaches Auflösungsset erzeugt. Pro Wiedergabe wird eine Auflösung plus die passende Audiospur verwendet. Höhere Qualität erfordert mehr Netzwerkbandbreite. Ob ein Browser den konkreten Codec direkt unterstützt, hängt von Gerät, Betriebssystem und Browser ab.
-
-## Technische Hinweise
-
-- API: FastAPI + yt-dlp
-- Live-Muxing: FFmpeg mit fragmentiertem MP4/WebM
-- PO-Token-Dienst: BgUtils auf `127.0.0.1:4416`
-- Start: `start.sh` (Render/Docker) oder `run_local.py` (Windows)
-
-Es besteht keine Garantie für dauerhafte Kompatibilität. YouTube kann Formate, Zugriffsbeschränkungen oder Anforderungen an Tokens ändern. Private, DRM-geschützte oder sonst gesperrte Videos können nicht wiedergegeben werden.
-
-
-## Bestehendes GitHub-/Render-Projekt aktualisieren
-
-1. Lade die Datei `videolibre-source.zip` aus dem beigefügten Update-Paket in das Hauptverzeichnis deines GitHub-Repositories hoch.
-2. Die vorhandene GitHub-Action `Unpack VideoLibre` entpackt die ZIP in die Repository-Wurzel und löscht anschließend die ZIP-Datei.
-3. Render startet wegen `autoDeploy: true` danach automatisch einen neuen Build.
-4. Öffne nach dem Deploy `https://DEINE-RENDER-ADRESSE.onrender.com/api/health`. Die Antwort enthält `yt_dlp_version`, `youtube_js_runtime`, `youtube_player_fallbacks` und `preflight_diagnostics`.
-
-Beim Abspielen prüft die Website nun zunächst `/api/resolve/...`. Falls YouTube keine Player-Antwort liefert, wird diese konkrete Meldung im Player angezeigt, bevor der MIME-Fehler des Browserplayers entstehen kann.
-
-## Warum die Änderung nötig ist
-
-Node.js war im Docker-Image zwar bereits vorhanden, aber yt-dlp aktiviert Node in der Python-API nicht automatisch. Node wird jetzt explizit als JS-Laufzeit aktiviert. Außerdem wird der von yt-dlp empfohlene Nightly-Kanal verwendet und die Extraktion versucht alternative YouTube-Player-Clients. Das kann YouTube-Änderungen abfangen, garantiert aber keinen Erfolg, wenn YouTube die öffentliche Hosting-IP blockiert.
-
-
-**Wichtige Hosting-Grenze:** Wenn YouTube die ausgehende IP-Adresse des Render-Dienstes blockiert, können weder EJS noch ein PO-Token-Provider diese IP-Sperre garantiert beheben. In diesem Fall ist ein Hosting-Anbieter mit anderer bzw. dedizierter ausgehender IP nötig. Der BgUtils-Anbieter selbst weist ebenfalls darauf hin, dass ein PO-Token Bot-Checks und 403-Fehler nicht garantiert umgeht.
-
-
-## Echter Datei-Download
-
-Im Player gibt es jetzt den Button **„Video herunterladen“**. Er ruft `/api/download/{video_id}` auf. Das Backend sendet denselben ausgewählten Video-/Audiostream mit `Content-Disposition: attachment`, damit der Browser eine echte Datei speichert. Der Download läuft direkt als Stream; auf dem Server wird keine vollständige Videodatei zwischengespeichert. Die gewählte Auflösung (720p, 1080p, 1440p, 2160p oder beste verfügbare Qualität) wird übernommen.
-
-Der Download funktioniert nur für Videos, deren Streams technisch zugänglich sind. Es werden keine privaten Inhalte, DRM, Bezahlschranken oder sonstige Zugriffsbeschränkungen umgangen. Lade nur Inhalte herunter, für die du die erforderlichen Rechte oder eine Erlaubnis hast.
-
-## YouTube: „Sign in to confirm you’re not a bot“
-
-VideoLibre tries `web_safari` as an additional player-client fallback. If YouTube
-still asks for a sign-in, yt-dlp can optionally read an exported `cookies.txt`
-file. For a hosted service, configure it as a secret environment variable; do
-not commit cookies to GitHub and do not paste them into chat.
-
-### Render environment variable (optional)
-
-1. In a browser where you are signed in to YouTube, refresh YouTube and export
-   the cookies for `youtube.com` in Netscape `cookies.txt` format.
-2. On Windows PowerShell, convert the file to one Base64 line (adjust the path):
-
-   ```powershell
-   $bytes = [IO.File]::ReadAllBytes("$HOME\Downloads\cookies.txt")
-   [Convert]::ToBase64String($bytes) | Set-Clipboard
-   ```
-
-3. In Render: open your VideoLibre service → **Environment** → add
-   `YOUTUBE_COOKIES_B64` and paste the clipboard value as its secret value.
-4. Save and redeploy. `/api/health` reports only whether cookies are configured,
-   never the cookie contents.
-
-Alternatively, mount a secret file and set `YOUTUBE_COOKIES_FILE` to its path.
-The app copies Base64-provided cookies to a private-permission temporary file
-inside the running container.
-
-**Security:** YouTube cookies are login credentials. Use a separate account with
-no sensitive data, keep this VideoLibre instance private, never place cookies in
-source control, and remove/rotate them when no longer needed. Do not configure a
-single account's cookies on a public multi-user downloader. Cookies may expire,
-and a cloud hosting IP may still be challenged even with cookies; in that case
-run the backend on your own PC/network.
+- Die API eines Drittanbieters ist keine Verfügbarkeitsgarantie. Die Instanz kann überlastet sein, API-Zugriff abschalten oder von YouTube keine Medienformate erhalten.
+- Cookies und direkte yt-dlp-Auflösung sind weiterhin nur Fallbacks; Invidious umgeht keine DRM- oder Bezahlschranken.
+- Öffentliche Instanzen nicht überlasten; nur Inhalte laden, für die du die nötigen Rechte oder Erlaubnis hast.
+- Live-Streams, private, altersbeschränkte, regionale oder anderweitig eingeschränkte Videos können weiterhin nicht verfügbar sein.
+- Ein echter YouTube-Live-Download wurde während der Erstellung nicht ausgeführt. Python-/JavaScript-Syntax und lokale Format-Auswahltests werden separat geprüft.
